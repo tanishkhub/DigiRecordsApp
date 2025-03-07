@@ -12,7 +12,6 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  TextField,
   Divider,
   IconButton,
   ToggleButton,
@@ -24,8 +23,7 @@ import ViewListIcon from "@mui/icons-material/ViewList";
 import GoogleTranslateComponent from "../components/GoogleTranslateComponent";
 import axios from "axios";
 
-// Minimal print styles: no scaling or layout changes,
-// plus a class to force page breaks after each user in scrollable view.
+// Minimal print styles
 const PrintStyles = () => (
   <style>
     {`
@@ -49,14 +47,14 @@ const PrintStyles = () => (
 const UserDetails = () => {
   const { id } = useParams();
 
-  // Use useMemo to calculate uniqueIds only when 'id' changes
+  // Calculate unique IDs from the URL parameter.
   const uniqueIds = useMemo(() => {
     return id.includes(",")
       ? [...new Set(id.split(",").map((item) => item.trim()))]
       : [id];
   }, [id]);
 
-  // Determine if there are multiple unique ids
+  // Determine if multiple IDs are provided.
   const isMultiple = useMemo(() => uniqueIds.length > 1, [uniqueIds]);
 
   const [usersData, setUsersData] = useState([]);
@@ -71,8 +69,12 @@ const UserDetails = () => {
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
   useEffect(() => {
+    // Reset state when the id changes
+    setUsersData([]);
+    setLoading(true);
+    setError(null);
+
     if (isMultiple) {
-      // Single request with comma-separated unique IDs
       axios
         .get(`${API_BASE_URL}/api/users/${uniqueIds.join(",")}`)
         .then((res) => {
@@ -144,15 +146,32 @@ const UserDetails = () => {
         : {};
     const generalKeys = Object.keys(general);
 
-    // Dynamically determine table headers for family members.
+    // Determine table headers for family members.
     let familyColumns = [];
     if (user.familyMembers && user.familyMembers.length > 0) {
       familyColumns = Object.keys(user.familyMembers[0]);
     }
 
+    // Determine the family id (using parentId if available, otherwise falling back to _id)
+    const familyId = user.parentId || user._id;
+
     return (
-      <Box key={user._id || Math.random()} sx={{ mb: 4 }} className="page-break">
-        {/* Form Heading */}
+      <Box
+        key={user._id || Math.random()}
+        sx={{ mb: 4, position: "relative" }}
+        className="page-break"
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            backgroundColor: "rgba(0,0,0,0.05)",
+            padding: "4px 8px",
+            borderRadius: "4px",
+          }}
+        ></Box>
+
         <GoogleTranslateComponent />
         <Box textAlign="center" mb={2}>
           <Typography
@@ -163,75 +182,102 @@ const UserDetails = () => {
               textShadow: "1px 1px 2px rgba(0,0,0,0.2)",
             }}
           >
-            Kori Samaj Seva Mandal Sagar (M.P.)
+            Kori Samaj Utthan Sangathan Sagar (M.P.)
           </Typography>
           <Typography variant="subtitle1" sx={{ color: "text.secondary" }}>
-            Detailed Family Data
+            <strong>Detailed Family Data</strong>
+          </Typography>
+          <Typography
+            variant="subtitle2"
+            color="textSecondary"
+            sx={{
+              fontWeight: "medium",
+              backgroundColor: (theme) => theme.palette.grey[100],
+              padding: "8px 12px",
+              borderRadius: "8px",
+              display: "inline-block",
+            }}
+          >
+            Family ID: <strong>{familyId}</strong>
           </Typography>
         </Box>
         <Paper
           variant="outlined"
-          sx={{ p: 2, mb: 2, borderRadius: "8px", bgcolor: "background.paper" }}
+          sx={{
+            p: 2,
+            mb: 2,
+            borderRadius: "8px",
+            bgcolor: "background.paper",
+          }}
         >
-<Grid container spacing={2}>
-  {generalKeys.map((key, index) => (
-    <Grid item xs={4} key={index}>
-      <Typography variant="subtitle2" color="textSecondary">
-        {key}
-      </Typography>
-      <Typography variant="body1">
-      {key === "Monthly Income"
-        ? `₹ ${general[key] || ""}`
-        : general[key] || ""}
-      </Typography>
-    </Grid>
-  ))}
-</Grid>
-
+          <Grid container spacing={2}>
+            {generalKeys.map((key, index) => (
+              <Grid item xs={4} key={index}>
+                <Typography variant="subtitle2" color="textSecondary">
+                  {key}
+                </Typography>
+                <Typography variant="body1">
+                  {key === "Monthly Income"
+                    ? `₹ ${general[key] || ""}`
+                    : general[key] || ""}
+                </Typography>
+              </Grid>
+            ))}
+          </Grid>
         </Paper>
         <Divider sx={{ my: 2 }} />
-        
-
-<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 4 }}>
-  <Typography
-    variant="h5"
-    component="h2"
-    sx={{
-      mb: 2,
-      color: 'primary.main',
-      fontWeight: 600,
-      textAlign: 'center',
-    }}
-  >
-    Family Members Information
-  </Typography>
-  <Table size="small" aria-label="family-members" sx={{ maxWidth: 600 }}>
-    <TableHead>
-      <TableRow>
-        {familyColumns.map((col, index) => (
-          <TableCell key={index} sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-            {col}
-          </TableCell>
-        ))}
-      </TableRow>
-    </TableHead>
-    <TableBody>
-      {user.familyMembers &&
-        user.familyMembers.map((member, rowIndex) => (
-          <TableRow key={rowIndex}>
-            {familyColumns.map((col, colIndex) => (
-              <TableCell key={colIndex} sx={{ textAlign: 'center' }}>
-                {member[col]}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-    </TableBody>
-  </Table>
-</Box>
-
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            mt: 4,
+          }}
+        >
+          <Typography
+            variant="h5"
+            component="h2"
+            sx={{
+              mb: 2,
+              color: "primary.main",
+              fontWeight: 600,
+              textAlign: "center",
+            }}
+          >
+            Family Members Information
+          </Typography>
+          <Table size="small" aria-label="family-members" sx={{ maxWidth: 600 }}>
+            <TableHead>
+              <TableRow>
+                {familyColumns.map((col, index) => (
+                  <TableCell
+                    key={index}
+                    sx={{ fontWeight: "bold", textAlign: "center" }}
+                  >
+                    {col}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {user.familyMembers &&
+                user.familyMembers.map((member, rowIndex) => (
+                  <TableRow key={rowIndex}>
+                    {familyColumns.map((col, colIndex) => (
+                      <TableCell key={colIndex} sx={{ textAlign: "center" }}>
+                        {member[col]}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </Box>
         <Box sx={{ mt: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: "bold", color: "secondary.main" }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: "bold", color: "secondary.main" }}
+          >
             Additional Information:
           </Typography>
           <Typography variant="body1">
@@ -252,10 +298,13 @@ const UserDetails = () => {
     );
   };
 
+  // Moved the remount comment outside of the Container element.
+  {/* Force remount when the id parameter changes */}
   return (
     <>
       <PrintStyles />
       <Container
+        key={id}
         maxWidth={false}
         sx={{
           width: "794px", // ~ A4 width at 96 DPI; adjust as needed
@@ -276,7 +325,7 @@ const UserDetails = () => {
           // Scrollable view: Render all user details on one long page.
           usersData.map((user) => renderUserDetails(user))
         )}
-        {/* Navigation controls are rendered only for paginated view and hidden during printing */}
+        {/* Navigation controls for paginated view */}
         {viewMode === "paginated" && usersData.length > 1 && (
           <Box
             display="flex"
@@ -322,13 +371,13 @@ const UserDetails = () => {
         )}
       </Container>
 
-      {/* Floating container for view mode toggle buttons with collapse/expand logic */}
+      {/* Floating container for view mode toggle buttons */}
       <Box
         onMouseEnter={() => setToggleExpanded(true)}
         onMouseLeave={() => setToggleExpanded(false)}
         sx={{
           position: "fixed",
-          top: 20, // Positioned at the top right
+          top: 20,
           right: 20,
           display: "flex",
           gap: toggleExpanded ? 1 : 0,

@@ -10,7 +10,13 @@ import {
   InputAdornment,
   Switch,
   Box,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Collapse,
 } from "@mui/material";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import { DataGrid } from "@mui/x-data-grid";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -19,7 +25,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import axios from "axios";
 import GoogleTranslateComponent from "../components/GoogleTranslateComponent";
 import { keyframes } from "@mui/system";
-import EditUser from "../components/EditUser"; // Import the EditUser dialog component
+import EditUser from "../components/EditUser";
 
 const ViewUsers = () => {
   const [users, setUsers] = useState([]);
@@ -27,8 +33,8 @@ const ViewUsers = () => {
   const [columns, setColumns] = useState([]);
   const [selectedRows, setSelectedRows] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  // Toggle viewMode with a switch ("individual" when off, "family" when on)
   const [viewMode, setViewMode] = useState("individual");
+  const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
 
   // Pagination state
@@ -40,17 +46,90 @@ const ViewUsers = () => {
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
   const gradientAnimation = keyframes`
-    0% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   `;
 
+  // --------------------
+  // Filter States & Options
+  // --------------------
+  const [wardOptions, setWardOptions] = useState([]);
+  const [districtOptions, setDistrictOptions] = useState([]);
+  const [tehsilOptions, setTehsilOptions] = useState([]);
+  const [casteOptions, setCasteOptions] = useState([]);
+  const [subcasteOptions, setSubcasteOptions] = useState([]);
+  const [gotraOptions, setGotraOptions] = useState([]);
+
+  // Selected filter state variables
+  const [selectedWard, setSelectedWard] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedTehsil, setSelectedTehsil] = useState("");
+  const [selectedCaste, setSelectedCaste] = useState("");
+  const [selectedSubcaste, setSelectedSubcaste] = useState("");
+  const [selectedGotra, setSelectedGotra] = useState("");
+  const [selectedMaritalStatus, setSelectedMaritalStatus] = useState("");
+  const [selectedGender, setSelectedGender] = useState("");
+  const [selectedAgeRange, setSelectedAgeRange] = useState("");
+  const [selectedSalaryRange, setSelectedSalaryRange] = useState("");
+
+  // Define static options for marital status and gender
+  const maritalStatusOptions = ["Married", "Single", "Divorced"];
+  const genderOptions = ["Male", "Female"];
+
+  // Example ranges for age and salary
+  const ageRanges = [
+    { label: "0-18", min: 0, max: 18 },
+    { label: "19-30", min: 19, max: 30 },
+    { label: "31-50", min: 31, max: 50 },
+    { label: "51+", min: 51, max: Infinity },
+  ];
+
+  const salaryRanges = [
+    { label: "0-25000", min: 0, max: 25000 },
+    { label: "25001-50000", min: 25001, max: 50000 },
+    { label: "50001-100000", min: 50001, max: 100000 },
+    { label: "100001+", min: 100001, max: Infinity },
+  ];
+
+  // --------------------
+  // Fetch Options from Endpoints
+  // --------------------
+  useEffect(() => {
+    axios
+      .get(`${API_BASE_URL}/api/wards/all`)
+      .then((res) => setWardOptions(res.data))
+      .catch((err) => console.error("Error fetching wards:", err));
+
+    axios
+      .get(`${API_BASE_URL}/api/district/all`)
+      .then((res) => setDistrictOptions(res.data))
+      .catch((err) => console.error("Error fetching districts:", err));
+
+    axios
+      .get(`${API_BASE_URL}/api/tehsil/all`)
+      .then((res) => setTehsilOptions(res.data))
+      .catch((err) => console.error("Error fetching tehsils:", err));
+
+    axios
+      .get(`${API_BASE_URL}/api/caste/all`)
+      .then((res) => setCasteOptions(res.data))
+      .catch((err) => console.error("Error fetching castes:", err));
+
+    axios
+      .get(`${API_BASE_URL}/api/subcaste/all`)
+      .then((res) => setSubcasteOptions(res.data))
+      .catch((err) => console.error("Error fetching sub castes:", err));
+
+    axios
+      .get(`${API_BASE_URL}/api/gotra/all`)
+      .then((res) => setGotraOptions(res.data))
+      .catch((err) => console.error("Error fetching gotras:", err));
+  }, [API_BASE_URL]);
+
+  // --------------------
+  // Fetch Data (Fields and Users)
+  // --------------------
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -63,15 +142,23 @@ const ViewUsers = () => {
         // Extract the familyMembers fields from the fields response.
         const familyMembersFields = fieldsRes.data.familyMembers;
 
-        // Create DataGrid column definitions from familyMembers fields.
-        const dynamicColumns = familyMembersFields.map((fieldName) => {
-          const normalizedField = fieldName.replace(/\s+/g, "");
-          return {
-            field: normalizedField,
-            headerName: fieldName,
+        // Create DataGrid column definitions:
+        // First column now shows the parent's id (userId).
+        const dynamicColumns = [
+          {
+            field: "userId",
+            headerName: "ID",
             flex: 1,
-          };
-        });
+          },
+          ...familyMembersFields.map((fieldName) => {
+            const normalizedField = fieldName.replace(/\s+/g, "");
+            return {
+              field: normalizedField,
+              headerName: fieldName,
+              flex: 1,
+            };
+          }),
+        ];
         setColumns(dynamicColumns);
 
         // Process user data: normalize each family member object.
@@ -82,9 +169,20 @@ const ViewUsers = () => {
               const normalizedKey = fieldName.replace(/\s+/g, "");
               normalizedMember[normalizedKey] = member[fieldName];
             });
+            // Optionally merge parent's generalInfo if needed for filtering
+            if (user.generalInfo && user.generalInfo[0]) {
+              const general = user.generalInfo[0];
+              normalizedMember.wardMuhallaName = general["Ward/Muhalla Name"];
+              normalizedMember.District = general["District"];
+              normalizedMember.Tehsil = general["Tehsil"];
+              normalizedMember.Caste = general["Caste"];
+              normalizedMember.SubCaste = general["Sub Caste"];
+              normalizedMember.Gotra = general["Gotra"];
+              normalizedMember.MonthlyIncome = general["Monthly Income"];
+            }
             return {
               ...normalizedMember,
-              userId: user._id, // Used for grouping and navigation
+              userId: user._id, // Parent's id used for grouping and navigation
               id: member._id || Math.random().toString(36).substr(2, 9),
             };
           })
@@ -100,7 +198,101 @@ const ViewUsers = () => {
     fetchData();
   }, [API_BASE_URL]);
 
-  // Floating edit button handler when a single row is selected.
+  // --------------------
+  // Filtering Logic: Combines search query and filter dropdown values.
+  // --------------------
+  useEffect(() => {
+    let filtered = [...users];
+
+    // Global text search
+    if (searchQuery) {
+      filtered = filtered.filter((member) =>
+        Object.values(member).some(
+          (value) =>
+            typeof value === "string" &&
+            value.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      );
+    }
+
+    // Filter by Ward/Muhalla
+    if (selectedWard) {
+      filtered = filtered.filter(
+        (member) => member.wardMuhallaName === selectedWard
+      );
+    }
+    // Filter by District
+    if (selectedDistrict) {
+      filtered = filtered.filter((member) => member.District === selectedDistrict);
+    }
+    // Filter by Tehsil
+    if (selectedTehsil) {
+      filtered = filtered.filter((member) => member.Tehsil === selectedTehsil);
+    }
+    // Filter by Caste
+    if (selectedCaste) {
+      filtered = filtered.filter((member) => member.Caste === selectedCaste);
+    }
+    // Filter by Sub Caste
+    if (selectedSubcaste) {
+      filtered = filtered.filter((member) => member.SubCaste === selectedSubcaste);
+    }
+    // Filter by Gotra (exclude same gotra)
+    if (selectedGotra) {
+      filtered = filtered.filter((member) => member.Gotra !== selectedGotra);
+    }
+    // Filter by Marital Status
+    if (selectedMaritalStatus) {
+      filtered = filtered.filter(
+        (member) => member["Marital Status"] === selectedMaritalStatus
+      );
+    }
+    // Filter by Gender
+    if (selectedGender) {
+      filtered = filtered.filter((member) => member.Gender === selectedGender);
+    }
+    // Filter by Age Range
+    if (selectedAgeRange) {
+      const range = ageRanges.find((r) => r.label === selectedAgeRange);
+      if (range) {
+        filtered = filtered.filter((member) => {
+          const age = parseInt(member.Age, 10);
+          return age >= range.min && age <= range.max;
+        });
+      }
+    }
+    // Filter by Salary Range
+    if (selectedSalaryRange) {
+      const range = salaryRanges.find((r) => r.label === selectedSalaryRange);
+      if (range) {
+        filtered = filtered.filter((member) => {
+          const salary = parseInt(member.MonthlyIncome, 10);
+          return salary >= range.min && salary <= range.max;
+        });
+      }
+    }
+
+    setFilteredData(filtered);
+  }, [
+    searchQuery,
+    users,
+    selectedWard,
+    selectedDistrict,
+    selectedTehsil,
+    selectedCaste,
+    selectedSubcaste,
+    selectedGotra,
+    selectedMaritalStatus,
+    selectedGender,
+    selectedAgeRange,
+    selectedSalaryRange,
+    ageRanges,
+    salaryRanges,
+  ]);
+
+  // --------------------
+  // Handlers for Row Actions
+  // --------------------
   const handleEditSingle = () => {
     const selectedRowId = selectedRows[0];
     const selectedRow = users.find((member) => member.id === selectedRowId);
@@ -110,29 +302,15 @@ const ViewUsers = () => {
     }
   };
 
-  // Filter rows based on the search query.
-  useEffect(() => {
-    const lowercasedQuery = searchQuery.toLowerCase();
-    setFilteredData(
-      users.filter((member) =>
-        Object.values(member).some(
-          (value) =>
-            typeof value === "string" &&
-            value.toLowerCase().includes(lowercasedQuery)
-        )
-      )
-    );
-  }, [searchQuery, users]);
-
-  const handleRowClick = (params) => {
-    navigate(`/user/${params.row.userId}`);
+  const handleRowClick = (params, event) => {
+    event.stopPropagation();
+    window.location.href = `/user/${params.row.userId}`;
   };
 
   const handleSelectionChange = (selection) => {
     setSelectedRows(selection);
   };
 
-  // Delete handler with confirmation.
   const handleDelete = async () => {
     if (selectedRows.length === 0) return;
 
@@ -141,7 +319,6 @@ const ViewUsers = () => {
     );
     if (!confirmed) return;
 
-    // Extract unique parent's ids from the selected rows.
     const parentIds = Array.from(
       new Set(
         users
@@ -154,7 +331,6 @@ const ViewUsers = () => {
       await axios.delete(`${API_BASE_URL}/api/users`, {
         data: { ids: parentIds },
       });
-      // Remove all rows belonging to the deleted parent's ids.
       const updatedUsers = users.filter(
         (member) => !parentIds.includes(member.userId)
       );
@@ -166,7 +342,6 @@ const ViewUsers = () => {
     }
   };
 
-  // Handler for viewing details for multiple users.
   const handleViewDetails = () => {
     if (selectedRows.length === 0) return;
     const parentIds = Array.from(
@@ -177,7 +352,7 @@ const ViewUsers = () => {
       )
     );
     const targetIds = parentIds.join(",");
-    navigate(`/user/${targetIds}`);
+    window.location.href = `/user/${targetIds}`;
   };
 
   // Dynamic styling for family grouping.
@@ -203,7 +378,6 @@ const ViewUsers = () => {
     )
     .join("\n");
 
-  // Handler for page size dropdown
   const handlePageSizeChange = (event) => {
     const value = event.target.value;
     setPageSize(Number(value));
@@ -236,37 +410,213 @@ const ViewUsers = () => {
         Family Details
       </Typography>
 
+      {/* Combined Search and Filter Container */}
       <Paper
         elevation={3}
         sx={{
-          p: 1,
+          p: 2,
           mb: 2,
-          borderRadius: "50px",
-          transition: "box-shadow 0.3s ease",
-          ":hover": { boxShadow: 6 },
+          borderRadius: "24px",
+          maxWidth: "700px",
+          margin: "0 auto",
+          boxShadow: "0px 2px 10px rgba(0, 0, 0, 0.1)",
+          border: "1px solid #e0e0e0",
+          backgroundColor: "#fff",
         }}
       >
-        <TextField
-          label="Search"
-          variant="outlined"
-          fullWidth
-          size="small"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon color="action" />
-              </InputAdornment>
-            ),
-            sx: { borderRadius: "50px" },
-          }}
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "50px",
-            },
-          }}
-        />
+        <Box display="flex" alignItems="center">
+          <TextField
+            label="Search"
+            variant="outlined"
+            fullWidth
+            size="small"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              flexGrow: 1,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "24px",
+                backgroundColor: "#f9f9f9",
+              },
+            }}
+          />
+          <IconButton
+            onClick={() => setShowFilters((prev) => !prev)}
+            sx={{ ml: 1 }}
+          >
+            <FilterListIcon sx={{ fontSize: 28 }} />
+          </IconButton>
+        </Box>
+        <Collapse in={showFilters}>
+          <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Ward/Muhalla</InputLabel>
+              <Select
+                label="Ward/Muhalla"
+                value={selectedWard}
+                onChange={(e) => setSelectedWard(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {wardOptions.map((ward) => (
+                  <MenuItem key={ward._id} value={ward.name}>
+                    {ward.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>District</InputLabel>
+              <Select
+                label="District"
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {districtOptions.map((district) => (
+                  <MenuItem key={district._id} value={district.name}>
+                    {district.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Tehsil</InputLabel>
+              <Select
+                label="Tehsil"
+                value={selectedTehsil}
+                onChange={(e) => setSelectedTehsil(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {tehsilOptions.map((tehsil) => (
+                  <MenuItem key={tehsil._id} value={tehsil.name}>
+                    {tehsil.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Caste</InputLabel>
+              <Select
+                label="Caste"
+                value={selectedCaste}
+                onChange={(e) => setSelectedCaste(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {casteOptions.map((caste) => (
+                  <MenuItem key={caste._id} value={caste.name}>
+                    {caste.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Sub Caste</InputLabel>
+              <Select
+                label="Sub Caste"
+                value={selectedSubcaste}
+                onChange={(e) => setSelectedSubcaste(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {subcasteOptions.map((subcaste) => (
+                  <MenuItem key={subcaste._id} value={subcaste.name}>
+                    {subcaste.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Gotra</InputLabel>
+              <Select
+                label="Gotra"
+                value={selectedGotra}
+                onChange={(e) => setSelectedGotra(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {gotraOptions.map((gotra) => (
+                  <MenuItem key={gotra._id} value={gotra.name}>
+                    {gotra.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Marital Status</InputLabel>
+              <Select
+                label="Marital Status"
+                value={selectedMaritalStatus}
+                onChange={(e) => setSelectedMaritalStatus(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {maritalStatusOptions.map((status) => (
+                  <MenuItem key={status} value={status}>
+                    {status}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Gender</InputLabel>
+              <Select
+                label="Gender"
+                value={selectedGender}
+                onChange={(e) => setSelectedGender(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {genderOptions.map((g) => (
+                  <MenuItem key={g} value={g}>
+                    {g}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Age Range</InputLabel>
+              <Select
+                label="Age Range"
+                value={selectedAgeRange}
+                onChange={(e) => setSelectedAgeRange(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {ageRanges.map((range) => (
+                  <MenuItem key={range.label} value={range.label}>
+                    {range.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Salary Range</InputLabel>
+              <Select
+                label="Salary Range"
+                value={selectedSalaryRange}
+                onChange={(e) => setSelectedSalaryRange(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                {salaryRanges.map((range) => (
+                  <MenuItem key={range.label} value={range.label}>
+                    {range.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </Collapse>
       </Paper>
 
       {/* Custom toolbar for view mode and pagination control */}
@@ -319,6 +669,7 @@ const ViewUsers = () => {
 
       <div style={{ height: 500, width: "100%" }}>
         <DataGrid
+          disableSelectionOnClick
           rows={filteredData}
           columns={columns}
           pageSize={pageSize}
@@ -327,7 +678,6 @@ const ViewUsers = () => {
           checkboxSelection
           onRowSelectionModelChange={handleSelectionChange}
           onRowClick={handleRowClick}
-          // Only add the family class when in "Family Grouping" mode.
           getRowClassName={(params) =>
             viewMode === "family" ? `family-${params.row.userId}` : ""
           }
@@ -339,7 +689,6 @@ const ViewUsers = () => {
         />
       </div>
 
-      {/* Integrate the EditUser dialog */}
       {editDialogOpen && (
         <EditUser
           id={editUserId}

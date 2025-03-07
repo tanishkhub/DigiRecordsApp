@@ -6,6 +6,7 @@ import {
   Paper,
   Typography,
   Grid,
+  Grow,
   TextField,
   Button,
   IconButton,
@@ -24,10 +25,13 @@ import {
   MenuItem,
   InputAdornment,
   Toolbar,
+  Divider
 } from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { Delete, Add, Close, Edit } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import HomeIcon from "@mui/icons-material/Home";
+import PreviewDialog from "../components/PreviewDialog";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -45,25 +49,51 @@ const AddUser = () => {
     navigate("/home");
   };
 
-  // Dialog states
+  // Dialog states for existing and new dialogs
   const [openFamilyDialog, setOpenFamilyDialog] = useState(false);
   const [openEditGeneralDialog, setOpenEditGeneralDialog] = useState(false);
   const [openEditFamilyDialog, setOpenEditFamilyDialog] = useState(false);
   const [openWardDialog, setOpenWardDialog] = useState(false);
   const [openEducationDialog, setOpenEducationDialog] = useState(false);
+  const [openSuccessDialog, setOpenSuccessDialog] = useState(false);
+  const [registeredUserId, setRegisteredUserId] = useState("");
+
+  // New dialogs for additional fields
+  const [openCasteDialog, setOpenCasteDialog] = useState(false);
+  const [openSubCasteDialog, setOpenSubCasteDialog] = useState(false);
+  const [openGotraDialog, setOpenGotraDialog] = useState(false);
+  const [openDistrictDialog, setOpenDistrictDialog] = useState(false);
+  const [openTehsilDialog, setOpenTehsilDialog] = useState(false);
 
   // Temporary states for form/dialog inputs
   const [familyMemberForm, setFamilyMemberForm] = useState({});
   const [newGeneralField, setNewGeneralField] = useState("");
   const [newFamilyField, setNewFamilyField] = useState("");
 
-  // State for wards
+  // States for Wards and Education (existing)
   const [wards, setWards] = useState([]);
   const [newWardName, setNewWardName] = useState("");
-
-  // State for education options
   const [educationOptions, setEducationOptions] = useState([]);
   const [newEducationName, setNewEducationName] = useState("");
+
+  // States for additional fields
+  const [castes, setCastes] = useState([]);
+  const [newCasteName, setNewCasteName] = useState("");
+
+  const [subCastes, setSubCastes] = useState([]);
+  const [newSubCasteName, setNewSubCasteName] = useState("");
+
+  const [gotras, setGotras] = useState([]);
+  const [newGotraName, setNewGotraName] = useState("");
+
+  const [districts, setDistricts] = useState([]);
+  const [newDistrictName, setNewDistrictName] = useState("");
+
+  const [tehsils, setTehsils] = useState([]);
+  const [newTehsilName, setNewTehsilName] = useState("");
+
+  // State for preview dialog
+  const [openPreviewDialog, setOpenPreviewDialog] = useState(false);
 
   // Fetch field structure from API
   const fetchFields = () => {
@@ -98,10 +128,51 @@ const AddUser = () => {
       );
   };
 
+  // Fetch additional fields from API
+  const fetchCastes = () => {
+    axios
+      .get(`${API_BASE_URL}/api/caste/all`)
+      .then((response) => setCastes(response.data))
+      .catch((error) => console.error("Error fetching castes:", error));
+  };
+
+  const fetchSubCastes = () => {
+    axios
+      .get(`${API_BASE_URL}/api/subcaste/all`)
+      .then((response) => setSubCastes(response.data))
+      .catch((error) => console.error("Error fetching sub castes:", error));
+  };
+
+  const fetchGotras = () => {
+    axios
+      .get(`${API_BASE_URL}/api/gotra/all`)
+      .then((response) => setGotras(response.data))
+      .catch((error) => console.error("Error fetching gotras:", error));
+  };
+
+  const fetchDistricts = () => {
+    axios
+      .get(`${API_BASE_URL}/api/district/all`)
+      .then((response) => setDistricts(response.data))
+      .catch((error) => console.error("Error fetching districts:", error));
+  };
+
+  const fetchTehsils = () => {
+    axios
+      .get(`${API_BASE_URL}/api/tehsil/all`)
+      .then((response) => setTehsils(response.data))
+      .catch((error) => console.error("Error fetching tehsils:", error));
+  };
+
   useEffect(() => {
     fetchFields();
     fetchWards();
     fetchEducationOptions();
+    fetchCastes();
+    fetchSubCastes();
+    fetchGotras();
+    fetchDistricts();
+    fetchTehsils();
   }, []);
 
   // Handle input changes for general info & additional info
@@ -226,7 +297,7 @@ const AddUser = () => {
       );
   };
 
-  // --- Ward CRUD Handlers ---
+  // --- Ward CRUD Handlers (existing) ---
   const addWard = () => {
     if (!newWardName.trim()) {
       alert("Ward name cannot be empty");
@@ -252,7 +323,7 @@ const AddUser = () => {
       .catch((error) => console.error("Error deleting ward:", error));
   };
 
-  // --- Education CRUD Handlers ---
+  // --- Education CRUD Handlers (existing) ---
   const addEducation = () => {
     if (!newEducationName.trim()) {
       alert("Education name cannot be empty");
@@ -282,14 +353,144 @@ const AddUser = () => {
       );
   };
 
-  // Submit form data
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  // --- Additional Fields CRUD Handlers ---
+  // Caste
+  const addCaste = () => {
+    if (!newCasteName.trim()) {
+      alert("Caste name cannot be empty");
+      return;
+    }
+    axios
+      .post(`${API_BASE_URL}/api/caste/add`, { name: newCasteName })
+      .then(() => {
+        alert("Caste added successfully!");
+        setNewCasteName("");
+        fetchCastes();
+      })
+      .catch((error) => console.error("Error adding caste:", error));
+  };
+
+  const deleteCaste = (id) => {
+    axios
+      .delete(`${API_BASE_URL}/api/caste/delete/${id}`)
+      .then(() => {
+        alert("Caste deleted successfully!");
+        fetchCastes();
+      })
+      .catch((error) => console.error("Error deleting caste:", error));
+  };
+
+  // Sub Caste
+  const addSubCaste = () => {
+    if (!newSubCasteName.trim()) {
+      alert("Sub Caste name cannot be empty");
+      return;
+    }
+    axios
+      .post(`${API_BASE_URL}/api/subcaste/add`, { name: newSubCasteName })
+      .then(() => {
+        alert("Sub Caste added successfully!");
+        setNewSubCasteName("");
+        fetchSubCastes();
+      })
+      .catch((error) => console.error("Error adding sub caste:", error));
+  };
+
+  const deleteSubCaste = (id) => {
+    axios
+      .delete(`${API_BASE_URL}/api/subcaste/delete/${id}`)
+      .then(() => {
+        alert("Sub Caste deleted successfully!");
+        fetchSubCastes();
+      })
+      .catch((error) => console.error("Error deleting sub caste:", error));
+  };
+
+  // Gotra
+  const addGotra = () => {
+    if (!newGotraName.trim()) {
+      alert("Gotra name cannot be empty");
+      return;
+    }
+    axios
+      .post(`${API_BASE_URL}/api/gotra/add`, { name: newGotraName })
+      .then(() => {
+        alert("Gotra added successfully!");
+        setNewGotraName("");
+        fetchGotras();
+      })
+      .catch((error) => console.error("Error adding gotra:", error));
+  };
+
+  const deleteGotra = (id) => {
+    axios
+      .delete(`${API_BASE_URL}/api/gotra/delete/${id}`)
+      .then(() => {
+        alert("Gotra deleted successfully!");
+        fetchGotras();
+      })
+      .catch((error) => console.error("Error deleting gotra:", error));
+  };
+
+  // District
+  const addDistrict = () => {
+    if (!newDistrictName.trim()) {
+      alert("District name cannot be empty");
+      return;
+    }
+    axios
+      .post(`${API_BASE_URL}/api/district/add`, { name: newDistrictName })
+      .then(() => {
+        alert("District added successfully!");
+        setNewDistrictName("");
+        fetchDistricts();
+      })
+      .catch((error) => console.error("Error adding district:", error));
+  };
+
+  const deleteDistrict = (id) => {
+    axios
+      .delete(`${API_BASE_URL}/api/district/delete/${id}`)
+      .then(() => {
+        alert("District deleted successfully!");
+        fetchDistricts();
+      })
+      .catch((error) => console.error("Error deleting district:", error));
+  };
+
+  // Tehsil
+  const addTehsil = () => {
+    if (!newTehsilName.trim()) {
+      alert("Tehsil name cannot be empty");
+      return;
+    }
+    axios
+      .post(`${API_BASE_URL}/api/tehsil/add`, { name: newTehsilName })
+      .then(() => {
+        alert("Tehsil added successfully!");
+        setNewTehsilName("");
+        fetchTehsils();
+      })
+      .catch((error) => console.error("Error adding tehsil:", error));
+  };
+
+  const deleteTehsil = (id) => {
+    axios
+      .delete(`${API_BASE_URL}/api/tehsil/delete/${id}`)
+      .then(() => {
+        alert("Tehsil deleted successfully!");
+        fetchTehsils();
+      })
+      .catch((error) => console.error("Error deleting tehsil:", error));
+  };
+
+  // --- Final Submission Function ---
+  const handleFinalSubmit = () => {
     const submissionData = {
       ...formData,
       familyCount: formData.familyMembers.length,
     };
-    // Automatically set "Number of Family Members" if exists in general fields
+
     if (
       fields.generalInfo &&
       fields.generalInfo.includes("Number of Family Members")
@@ -297,21 +498,31 @@ const AddUser = () => {
       submissionData.generalInfo["Number of Family Members"] =
         formData.familyMembers.length;
     }
+    
     axios
       .post(`${API_BASE_URL}/api/users/add`, submissionData)
       .then((response) => {
-        alert("User data saved successfully!");
-        console.log("User Data Response:", response.data);
+        const userId = response.data.userId;
+        setRegisteredUserId(userId);
+        setOpenSuccessDialog(true);
+        // Reset form data and close the preview dialog
         setFormData({
           generalInfo: {},
           familyMembers: [],
           additionalInfo: "",
         });
+        setOpenPreviewDialog(false);
       })
       .catch((error) => {
         console.error("Error saving user data:", error);
         alert("Failed to save user data. Please try again.");
       });
+  };
+
+  // --- Preview Submission Handler ---
+  const handlePreviewSubmit = (e) => {
+    e.preventDefault();
+    setOpenPreviewDialog(true);
   };
 
   // Extract fields for each section
@@ -352,7 +563,7 @@ const AddUser = () => {
         >
           Parivarik Vistrit Jankari
         </Typography>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handlePreviewSubmit}>
           {/* --- General Information Section --- */}
           <Box
             display="flex"
@@ -372,7 +583,6 @@ const AddUser = () => {
           </Box>
           <Grid container spacing={2}>
             {generalFields.map((field, index) => {
-              // Omit "Number of Family Members" from rendering
               if (field === "Number of Family Members") return null;
               if (field === "Job Type (Private/Govt)") {
                 return (
@@ -490,6 +700,166 @@ const AddUser = () => {
                         <IconButton
                           size="small"
                           onClick={() => setOpenEducationDialog(true)}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </Grid>
+                );
+              } else if (field === "Caste") {
+                return (
+                  <Grid item xs={12} sm={6} key={index}>
+                    <Box display="flex">
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label={field}
+                        value={formData.generalInfo[field] || ""}
+                        onChange={(e) =>
+                          handleInputChange("generalInfo", field, e.target.value)
+                        }
+                        variant="outlined"
+                      >
+                        {castes.map((caste) => (
+                          <MenuItem key={caste._id} value={caste.name}>
+                            {caste.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <Tooltip title="Manage Castes">
+                        <IconButton
+                          size="small"
+                          onClick={() => setOpenCasteDialog(true)}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </Grid>
+                );
+              } else if (field === "Sub Caste") {
+                return (
+                  <Grid item xs={12} sm={6} key={index}>
+                    <Box display="flex">
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label={field}
+                        value={formData.generalInfo[field] || ""}
+                        onChange={(e) =>
+                          handleInputChange("generalInfo", field, e.target.value)
+                        }
+                        variant="outlined"
+                      >
+                        {subCastes.map((subCaste) => (
+                          <MenuItem key={subCaste._id} value={subCaste.name}>
+                            {subCaste.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <Tooltip title="Manage Sub Castes">
+                        <IconButton
+                          size="small"
+                          onClick={() => setOpenSubCasteDialog(true)}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </Grid>
+                );
+              } else if (field === "Gotra") {
+                return (
+                  <Grid item xs={12} sm={6} key={index}>
+                    <Box display="flex">
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label={field}
+                        value={formData.generalInfo[field] || ""}
+                        onChange={(e) =>
+                          handleInputChange("generalInfo", field, e.target.value)
+                        }
+                        variant="outlined"
+                      >
+                        {gotras.map((gotra) => (
+                          <MenuItem key={gotra._id} value={gotra.name}>
+                            {gotra.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <Tooltip title="Manage Gotras">
+                        <IconButton
+                          size="small"
+                          onClick={() => setOpenGotraDialog(true)}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </Grid>
+                );
+              } else if (field === "District") {
+                return (
+                  <Grid item xs={12} sm={6} key={index}>
+                    <Box display="flex">
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label={field}
+                        value={formData.generalInfo[field] || ""}
+                        onChange={(e) =>
+                          handleInputChange("generalInfo", field, e.target.value)
+                        }
+                        variant="outlined"
+                      >
+                        {districts.map((district) => (
+                          <MenuItem key={district._id} value={district.name}>
+                            {district.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <Tooltip title="Manage Districts">
+                        <IconButton
+                          size="small"
+                          onClick={() => setOpenDistrictDialog(true)}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </Grid>
+                );
+              } else if (field === "Tehsil") {
+                return (
+                  <Grid item xs={12} sm={6} key={index}>
+                    <Box display="flex">
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label={field}
+                        value={formData.generalInfo[field] || ""}
+                        onChange={(e) =>
+                          handleInputChange("generalInfo", field, e.target.value)
+                        }
+                        variant="outlined"
+                      >
+                        {tehsils.map((tehsil) => (
+                          <MenuItem key={tehsil._id} value={tehsil.name}>
+                            {tehsil.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <Tooltip title="Manage Tehsils">
+                        <IconButton
+                          size="small"
+                          onClick={() => setOpenTehsilDialog(true)}
                         >
                           <Edit fontSize="small" />
                         </IconButton>
@@ -759,107 +1129,147 @@ const AddUser = () => {
         maxWidth="sm"
       >
         <DialogTitle>Add Family Member</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2}>
-            {familyFields.map((field, index) => {
-              if (field === "Relation") {
-                return (
-                  <Grid item xs={12} sm={6} key={index}>
-                    <TextField
-                      select
-                      fullWidth
-                      size="small"
-                      label={field}
-                      value={familyMemberForm[field] || ""}
-                      onChange={(e) =>
-                        handleFamilyMemberInputChange(field, e.target.value)
-                      }
-                      variant="outlined"
-                    >
-                      <MenuItem value="Self">Self</MenuItem>
-                      <MenuItem value="Father">Father</MenuItem>
-                      <MenuItem value="Mother">Mother</MenuItem>
-                      <MenuItem value="Wife">Wife</MenuItem>
-                      <MenuItem value="Son">Son</MenuItem>
-                      <MenuItem value="Daughter">Daughter</MenuItem>
-                      <MenuItem value="Niece/Nephew">Niece/Nephew</MenuItem>
-                      <MenuItem value="Grandson">Grandson</MenuItem>
-                      <MenuItem value="Granddaughter">Granddaughter</MenuItem>
-                      <MenuItem value="Grandfather">Grandfather</MenuItem>
-                      <MenuItem value="Grandmother">Grandmother</MenuItem>
-                    </TextField>
-                  </Grid>
-                );
-              } else if (field === "Specially Abled ") {
-                return (
-                  <Grid item xs={12} sm={6} key={index}>
-                    <TextField
-                      select
-                      fullWidth
-                      size="small"
-                      label={field}
-                      value={familyMemberForm[field] || "No"}
-                      onChange={(e) =>
-                        handleFamilyMemberInputChange(field, e.target.value)
-                      }
-                      variant="outlined"
-                    >
-                      <MenuItem value="Yes">Yes</MenuItem>
-                      <MenuItem value="No">No</MenuItem>
-                    </TextField>
-                  </Grid>
-                );
-              } else if (field === "Education") {
-                return (
-                  <Grid item xs={12} sm={6} key={index}>
-                    <Box display="flex">
-                      <TextField
-                        select
-                        fullWidth
-                        size="small"
-                        label={field}
-                        value={familyMemberForm[field] || ""}
-                        onChange={(e) =>
-                          handleFamilyMemberInputChange(field, e.target.value)
-                        }
-                        variant="outlined"
-                      >
-                        {educationOptions.map((edu) => (
-                          <MenuItem key={edu._id} value={edu.name}>
-                            {edu.name}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                      <Tooltip title="Manage Education Options">
-                        <IconButton
-                          size="small"
-                          onClick={() => setOpenEducationDialog(true)}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </Grid>
-                );
-              } else {
-                return (
-                  <Grid item xs={12} sm={6} key={index}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label={field}
-                      variant="outlined"
-                      value={familyMemberForm[field] || ""}
-                      onChange={(e) =>
-                        handleFamilyMemberInputChange(field, e.target.value)
-                      }
-                    />
-                  </Grid>
-                );
+<DialogContent>
+  <Grid container spacing={2}>
+    {familyFields.map((field, index) => {
+      if (field === "Relation") {
+        return (
+          <Grid item xs={12} sm={6} key={index}>
+            <TextField
+              select
+              fullWidth
+              size="small"
+              label={field}
+              value={familyMemberForm[field] || ""}
+              onChange={(e) =>
+                handleFamilyMemberInputChange(field, e.target.value)
               }
-            })}
+              variant="outlined"
+            >
+              <MenuItem value="Self">Self</MenuItem>
+              <MenuItem value="Father">Father</MenuItem>
+              <MenuItem value="Mother">Mother</MenuItem>
+              <MenuItem value="Wife">Wife</MenuItem>
+              <MenuItem value="Son">Son</MenuItem>
+              <MenuItem value="Daughter">Daughter</MenuItem>
+              <MenuItem value="Niece/Nephew">Niece/Nephew</MenuItem>
+              <MenuItem value="Grandson">Grandson</MenuItem>
+              <MenuItem value="Granddaughter">Granddaughter</MenuItem>
+              <MenuItem value="Grandfather">Grandfather</MenuItem>
+              <MenuItem value="Grandmother">Grandmother</MenuItem>
+            </TextField>
           </Grid>
-        </DialogContent>
+        );
+      } else if (field === "Gender") {
+        return (
+          <Grid item xs={12} sm={6} key={index}>
+            <TextField
+              select
+              fullWidth
+              size="small"
+              label={field}
+              value={familyMemberForm[field] || ""}
+              onChange={(e) =>
+                handleFamilyMemberInputChange(field, e.target.value)
+              }
+              variant="outlined"
+            >
+              <MenuItem value="Male">Male</MenuItem>
+              <MenuItem value="Female">Female</MenuItem>
+            </TextField>
+          </Grid>
+        );
+      } else if (field === "Specially Abled ") {
+        return (
+          <Grid item xs={12} sm={6} key={index}>
+            <TextField
+              select
+              fullWidth
+              size="small"
+              label={field}
+              value={familyMemberForm[field] || "No"}
+              onChange={(e) =>
+                handleFamilyMemberInputChange(field, e.target.value)
+              }
+              variant="outlined"
+            >
+              <MenuItem value="Yes">Yes</MenuItem>
+              <MenuItem value="No">No</MenuItem>
+            </TextField>
+          </Grid>
+        );
+      } else if (field === "Education") {
+        return (
+          <Grid item xs={12} sm={6} key={index}>
+            <Box display="flex">
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label={field}
+                value={familyMemberForm[field] || ""}
+                onChange={(e) =>
+                  handleFamilyMemberInputChange(field, e.target.value)
+                }
+                variant="outlined"
+              >
+                {educationOptions.map((edu) => (
+                  <MenuItem key={edu._id} value={edu.name}>
+                    {edu.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Tooltip title="Manage Education Options">
+                <IconButton
+                  size="small"
+                  onClick={() => setOpenEducationDialog(true)}
+                >
+                  <Edit fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Grid>
+        );
+      } else if (field === "Marital Status") {
+        return (
+          <Grid item xs={12} sm={6} key={index}>
+            <TextField
+              select
+              fullWidth
+              size="small"
+              label={field}
+              value={familyMemberForm[field] || ""}
+              onChange={(e) =>
+                handleFamilyMemberInputChange(field, e.target.value)
+              }
+              variant="outlined"
+            >
+              <MenuItem value="Married">Married</MenuItem>
+              <MenuItem value="Single">Single</MenuItem>
+              <MenuItem value="Divorced">Divorced</MenuItem>
+            </TextField>
+          </Grid>
+        );
+      } else {
+        return (
+          <Grid item xs={12} sm={6} key={index}>
+            <TextField
+              fullWidth
+              size="small"
+              label={field}
+              variant="outlined"
+              value={familyMemberForm[field] || ""}
+              onChange={(e) =>
+                handleFamilyMemberInputChange(field, e.target.value)
+              }
+            />
+          </Grid>
+        );
+      }
+    })}
+  </Grid>
+</DialogContent>
+
         <DialogActions>
           <Tooltip title="Save Family Member">
             <Button
@@ -1001,6 +1411,413 @@ const AddUser = () => {
           </IconButton>
         </DialogActions>
       </Dialog>
+
+      {/* --- Manage Castes Dialog --- */}
+      <Dialog
+        open={openCasteDialog}
+        onClose={() => setOpenCasteDialog(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Manage Castes</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            size="small"
+            label="New Caste Name"
+            variant="outlined"
+            value={newCasteName}
+            onChange={(e) => setNewCasteName(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+          <Button onClick={addCaste} variant="contained" color="primary" sx={{ mt: 2 }}>
+            Add Caste
+          </Button>
+          <TableContainer component={Paper} sx={{ mt: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Caste Name</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {castes.map((caste) => (
+                  <TableRow key={caste._id}>
+                    <TableCell>{caste.name}</TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => deleteCaste(caste._id)}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <IconButton
+            onClick={() => setOpenCasteDialog(false)}
+            color="secondary"
+            size="small"
+          >
+            <Close fontSize="small" />
+          </IconButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* --- Manage Sub Castes Dialog --- */}
+      <Dialog
+        open={openSubCasteDialog}
+        onClose={() => setOpenSubCasteDialog(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Manage Sub Castes</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            size="small"
+            label="New Sub Caste Name"
+            variant="outlined"
+            value={newSubCasteName}
+            onChange={(e) => setNewSubCasteName(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+          <Button onClick={addSubCaste} variant="contained" color="primary" sx={{ mt: 2 }}>
+            Add Sub Caste
+          </Button>
+          <TableContainer component={Paper} sx={{ mt: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Sub Caste Name</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {subCastes.map((subCaste) => (
+                  <TableRow key={subCaste._id}>
+                    <TableCell>{subCaste.name}</TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => deleteSubCaste(subCaste._id)}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <IconButton
+            onClick={() => setOpenSubCasteDialog(false)}
+            color="secondary"
+            size="small"
+          >
+            <Close fontSize="small" />
+          </IconButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* --- Manage Gotras Dialog --- */}
+      <Dialog
+        open={openGotraDialog}
+        onClose={() => setOpenGotraDialog(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Manage Gotras</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            size="small"
+            label="New Gotra Name"
+            variant="outlined"
+            value={newGotraName}
+            onChange={(e) => setNewGotraName(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+          <Button onClick={addGotra} variant="contained" color="primary" sx={{ mt: 2 }}>
+            Add Gotra
+          </Button>
+          <TableContainer component={Paper} sx={{ mt: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Gotra Name</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {gotras.map((gotra) => (
+                  <TableRow key={gotra._id}>
+                    <TableCell>{gotra.name}</TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => deleteGotra(gotra._id)}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <IconButton
+            onClick={() => setOpenGotraDialog(false)}
+            color="secondary"
+            size="small"
+          >
+            <Close fontSize="small" />
+          </IconButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* --- Manage Districts Dialog --- */}
+      <Dialog
+        open={openDistrictDialog}
+        onClose={() => setOpenDistrictDialog(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Manage Districts</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            size="small"
+            label="New District Name"
+            variant="outlined"
+            value={newDistrictName}
+            onChange={(e) => setNewDistrictName(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+          <Button onClick={addDistrict} variant="contained" color="primary" sx={{ mt: 2 }}>
+            Add District
+          </Button>
+          <TableContainer component={Paper} sx={{ mt: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>District Name</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {districts.map((district) => (
+                  <TableRow key={district._id}>
+                    <TableCell>{district.name}</TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => deleteDistrict(district._id)}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <IconButton
+            onClick={() => setOpenDistrictDialog(false)}
+            color="secondary"
+            size="small"
+          >
+            <Close fontSize="small" />
+          </IconButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* --- Manage Tehsils Dialog --- */}
+      <Dialog
+        open={openTehsilDialog}
+        onClose={() => setOpenTehsilDialog(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Manage Tehsils</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            size="small"
+            label="New Tehsil Name"
+            variant="outlined"
+            value={newTehsilName}
+            onChange={(e) => setNewTehsilName(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+          <Button onClick={addTehsil} variant="contained" color="primary" sx={{ mt: 2 }}>
+            Add Tehsil
+          </Button>
+          <TableContainer component={Paper} sx={{ mt: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Tehsil Name</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {tehsils.map((tehsil) => (
+                  <TableRow key={tehsil._id}>
+                    <TableCell>{tehsil.name}</TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => deleteTehsil(tehsil._id)}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <IconButton
+            onClick={() => setOpenTehsilDialog(false)}
+            color="secondary"
+            size="small"
+          >
+            <Close fontSize="small" />
+          </IconButton>
+        </DialogActions>
+      </Dialog>
+
+{/* --- Success Dialog --- */}
+<Dialog
+  open={openSuccessDialog}
+  onClose={() => setOpenSuccessDialog(false)}
+  fullWidth
+  maxWidth="xs"
+>
+  <DialogContent
+    sx={{
+      textAlign: "center",
+      p: 4,
+      background: "linear-gradient(135deg, #e0f7fa, #e1bee7)",
+      borderRadius: "16px", // smoother, more rounded corners
+      boxShadow: "0px 6px 24px rgba(0,0,0,0.15)", // enhanced shadow for a subtle lift
+    }}
+  >
+    <Grow in={openSuccessDialog} style={{ transformOrigin: "50% 50%" }} timeout={1000}>
+      <CheckCircleIcon
+        color="success"
+        sx={{
+          fontSize: 80,
+          animation: "pulse 2s infinite",
+          "@keyframes pulse": {
+            "0%": { transform: "scale(1)" },
+            "50%": { transform: "scale(1.1)" },
+            "100%": { transform: "scale(1)" },
+          },
+        }}
+      />
+    </Grow>
+    <Typography
+      variant="h5"
+      sx={{
+        mt: 2,
+        fontFamily: "'Permanent Marker', cursive",
+        color: "#3f51b5",
+        textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+        animation: "fadeIn 1.5s ease-in-out",
+        "@keyframes fadeIn": {
+          "0%": { opacity: 0 },
+          "100%": { opacity: 1 },
+        },
+      }}
+    >
+      Registered Successfully!
+    </Typography>
+    <Typography
+      variant="subtitle1"
+      sx={{
+        mt: 1,
+        color: "#424242",
+        fontWeight: 500,
+        animation: "slideIn 1.5s ease-out",
+        "@keyframes slideIn": {
+          "0%": { transform: "translateX(-20px)", opacity: 0 },
+          "100%": { transform: "translateX(0)", opacity: 1 },
+        },
+      }}
+    >
+      <strong>Your Unique FamilyId </strong>
+      
+    </Typography>
+    <Typography
+      variant="h5"
+      sx={{
+        mt: 2,
+        fontFamily: "'Permanent Marker', cursive",
+        color: "#3f51b5",
+        textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+        animation: "fadeIn 1.5s ease-in-out",
+        "@keyframes fadeIn": {
+          "0%": { opacity: 0 },
+          "100%": { opacity: 1 },
+        },
+      }}
+    ><strong>{registeredUserId}</strong>
+    </Typography>
+ 
+  <DialogActions sx={{ justifyContent: "center", mb: 2 }}>
+    <Button
+      onClick={() => setOpenSuccessDialog(false)}
+      variant="contained"
+      color="primary"
+      sx={{
+        px: 4,
+        py: 1.5,
+        fontSize: "1rem",
+        textTransform: "none",
+        borderRadius: "20px",
+        transition: "background-color 0.3s, transform 0.3s",
+        "&:hover": {
+          backgroundColor: "#303f9f",
+          transform: "scale(1.05)",
+        },
+      }}
+    >
+      Close
+    </Button>
+  </DialogActions>
+  </DialogContent>
+</Dialog>
+
+
+      {/* --- Render Preview Dialog Component --- */}
+      <PreviewDialog
+        open={openPreviewDialog}
+        onClose={() => setOpenPreviewDialog(false)}
+        onConfirm={handleFinalSubmit}
+        formData={formData}
+        fields={fields}
+      />
     </Container>
   );
 };
